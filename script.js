@@ -343,21 +343,20 @@ function renderHRPage() {
         type: 'bar',
         data: {
             labels: [
-                'Dr. Andi (Poli Dalam)',
-                'Dr. Sari (Poli Anak)',
-                'Dr. Budi (Poli Gigi)',
-                'Dr. Dewi (Poli Kandungan)',
-                'Dr. Rina (Poli Mata)',
-                'Ns. Hendra (IGD)',
-                'Ns. Lina (Rawat Inap)',
-                'Ns. Tono (Rawat Inap)'
+                'Poli Dalam',
+                'Poli Anak',
+                'Poli Gigi',
+                'Poli Kandungan',
+                'Poli Mata',
+                'IGD',
+                'Rawat Inap'
             ],
             datasets: [{
                 label: 'Jumlah Pasien',
-                data: [42, 38, 21, 35, 19, 55, 48, 44],
+                data: [42, 38, 21, 35, 19, 55, 48],
                 backgroundColor: [
                     '#4F7EF7','#34C98F','#34C98F','#F76B4F',
-                    '#34C98F','#F76B4F','#A78BF5','#A78BF5'
+                    '#34C98F','#F76B4F','#A78BF5'
                 ],
                 borderRadius: 6
             }]
