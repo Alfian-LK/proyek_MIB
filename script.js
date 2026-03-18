@@ -675,6 +675,16 @@ let isAdmin = false;
 function setAdminUI(admin) {
   isAdmin = admin;
 
+  if (admin) {
+    document.querySelector('.main').classList.add('visible');
+  } else {
+    document.querySelector('.main').classList.remove('visible');
+  }
+
+//   document.querySelectorAll('.nav-item.admin-only').forEach(btn => {
+//     btn.style.display = admin ? '' : 'none';
+//   });
+
   document.querySelectorAll('.nav-item.admin-only').forEach(btn => {
     if (admin) {
       btn.classList.add('admin-visible');
@@ -695,7 +705,7 @@ function setAdminUI(admin) {
       return el && el.classList.contains('active');
     });
     if (onRestricted) {
-      showPage('home', document.querySelector('.nav-item'));
+      showPage('home', document.querySelector('.nav-item.admin-only'));
     }
   }
 }
