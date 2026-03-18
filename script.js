@@ -336,55 +336,112 @@ function renderFinancePage() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// HR PAGE
-// ══════════════════════════════════════════════════════════════
+// ============================================================
+// HR PAGE  - data dari section Input Data (STORAGE_KEY)
+// ============================================================
 function renderHRPage() {
+    const inputData = getData();
+
+    // Poli yang ditampilkan (sesuai spesifikasi)
+    const HR_POLI = ['Poli Gigi','Poli Anak','Poli Kandungan','Poli Dalam','Poli Mata','Rawat Inap'];
+
+    // Hitung jumlah dokter unik per poli dari input data (field doctorName + doctorPoli)
+    const doctorPerPoli = {};
+    HR_POLI.forEach(p => doctorPerPoli[p] = new Set());
+    inputData.forEach(d => {
+        if (d.doctorName && d.doctorPoli && HR_POLI.includes(d.doctorPoli)) {
+            doctorPerPoli[d.doctorPoli].add(d.doctorName.trim());
+        }
+    });
+
+    // Hitung jumlah pasien per poli dari serviceType
+    const pasienPerPoli = {};
+    HR_POLI.forEach(p => pasienPerPoli[p] = 0);
+    inputData.forEach(d => {
+        const poli = d.serviceType;
+        if (poli && HR_POLI.includes(poli)) pasienPerPoli[poli]++;
+    });
+
+    // Baseline dokter (jika belum ada input dokter)
+    const BASE_DOKTER = {
+        'Poli Gigi':3,'Poli Anak':4,'Poli Kandungan':2,
+        'Poli Dalam':5,'Poli Mata':2,'Rawat Inap':8
+    };
+    const BASE_PASIEN = {
+        'Poli Gigi':21,'Poli Anak':38,'Poli Kandungan':35,
+        'Poli Dalam':42,'Poli Mata':19,'Rawat Inap':55
+    };
+
+    const dokterData = HR_POLI.map(p => {
+        const live = doctorPerPoli[p].size;
+        return live > 0 ? live : BASE_DOKTER[p];
+    });
+    const pasienData = HR_POLI.map(p => {
+        const live = pasienPerPoli[p];
+        return live > 0 ? live : BASE_PASIEN[p];
+    });
+
+    // Grafik grouped bar: dokter vs pasien per poli
     makeOrUpdate('hr-staffPatientChart', {
         type: 'bar',
         data: {
-            labels: [
-                'Poli Dalam',
-                'Poli Anak',
-                'Poli Gigi',
-                'Poli Kandungan',
-                'Poli Mata',
-                'IGD',
-                'Rawat Inap'
-            ],
-            datasets: [{
-                label: 'Jumlah Pasien',
-                data: [42, 38, 21, 35, 19, 55, 48],
-                backgroundColor: [
-                    '#4F7EF7','#34C98F','#34C98F','#F76B4F',
-                    '#34C98F','#F76B4F','#A78BF5'
-                ],
-                borderRadius: 6
-            }]
+            labels: HR_POLI,
+            datasets: [
+                {
+                    label: 'Jumlah Dokter',
+                    data: dokterData,
+                    backgroundColor: '#4F7EF7',
+                    borderRadius: 5,
+                    barPercentage: 0.85,
+                    categoryPercentage: 0.6
+                },
+                {
+                    label: 'Jumlah Pasien',
+                    data: pasienData,
+                    backgroundColor: '#34C98F',
+                    borderRadius: 5,
+                    barPercentage: 0.85,
+                    categoryPercentage: 0.6
+                }
+            ]
         },
         options: {
-            ...baseOpts(),
-            indexAxis: 'y',
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    grid: { color: '#F0EDE8' },
-                    title: { display: true, text: 'Jumlah Pasien' }
-                },
-                y: { grid: { display: false } }
-            },
+            responsive: true,
+            maintainAspectRatio: false,
             plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: ctx => ` ${ctx.parsed.x} pasien`
-                    }
-                }
+                legend: { display: true, position: 'bottom', labels: { boxWidth: 12, padding: 16 } },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}` } }
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: { beginAtZero: true, grid: { color: '#F0EDE8' } }
             }
         }
     });
+
+    // Tabel: Nama Poli | Jumlah Dokter | Jumlah Pasien | Proporsi (pasien/dokter)
+    const hrTbody = document.getElementById('hr-table-tbody');
+    if (hrTbody) {
+        const totalPasien = pasienData.reduce((a,b) => a+b, 0);
+        hrTbody.innerHTML = HR_POLI.map((poli, i) => {
+            const dok = dokterData[i];
+            const pas = pasienData[i];
+            const proporsi = dok > 0 ? (pas / dok).toFixed(1) : '-';
+            const pct = totalPasien > 0 ? Math.round((pas / totalPasien) * 100) : 0;
+            const srcDok = doctorPerPoli[poli].size > 0
+                ? '<span class="ds-badge ds-live">● Live</span>'
+                : '<span class="ds-badge ds-static">Baseline</span>';
+            return `<tr>
+                <td><strong>${poli}</strong></td>
+                <td>${dok} ${srcDok}</td>
+                <td>${pas}</td>
+                <td>${pct}%</td>
+                <td>${proporsi} pasien/dokter</td>
+            </tr>`;
+        }).join('');
+    }
 }
 
-// ══════════════════════════════════════════════════════════════
 // EFFICIENCY PAGE
 // ══════════════════════════════════════════════════════════════
 function renderEfficiencyPage() {
@@ -445,90 +502,76 @@ function renderEfficiencyPage() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// READMISSION PAGE  (DB_KEY — storage terpisah)
-// ══════════════════════════════════════════════════════════════
-function raLoad() { try{return JSON.parse(localStorage.getItem(DB_KEY))||[];}catch{return [];} }
-function raSave(data) { localStorage.setItem(DB_KEY,JSON.stringify(data)); }
-
-function isReadmission(visits,patientId,visitDate,excludeIndex=-1) {
-    const current=new Date(visitDate);
-    return visits.some((v,i)=>{
-        if (i===excludeIndex||v.patientId!==patientId) return false;
-        const diff=(current-new Date(v.visitDate))/86400000;
-        return diff>0&&diff<=30;
+// ============================================================
+// READMISSION PAGE  - data dari section Input Data
+// ============================================================
+function getVisitsFromInput() {
+    return getData()
+        .filter(d => d.patientId && (d.visitDate || d.admissionDate))
+        .map(d => ({
+            patientId:   d.patientId,
+            patientName: d.patientName || '-',
+            visitDate:   d.visitDate || d.admissionDate,
+            poli:        d.serviceType || d.ward || '-',
+            diagnosis:   d.financeNote || ''
+        }));
+}
+function isReadmission(visits, patientId, visitDate, excludeIndex = -1) {
+    const current = new Date(visitDate);
+    return visits.some((v, i) => {
+        if (i === excludeIndex || v.patientId !== patientId) return false;
+        const diff = (current - new Date(v.visitDate)) / 86400000;
+        return diff > 0 && diff <= 30;
     });
 }
-
 function recalcStatus(visits) {
-    return visits.map((v,i)=>({...v,status:isReadmission(visits,v.patientId,v.visitDate,i)?'readmit':visits.filter((x,j)=>j<i&&x.patientId===v.patientId).length>0?'followup':'new'}));
+    return visits.map((v, i) => ({
+        ...v,
+        status: isReadmission(visits, v.patientId, v.visitDate, i)
+            ? 'readmit'
+            : visits.filter((x, j) => j < i && x.patientId === v.patientId).length > 0
+                ? 'followup' : 'new'
+    }));
 }
-
 function renderKPI(visits) {
-    const total=visits.length,readmits=visits.filter(v=>v.status==='readmit').length;
-    const rate=total>0?((readmits/total)*100).toFixed(1):0;
-    document.getElementById('ra-totalVisits').textContent=total;
-    document.getElementById('ra-readmitCount').textContent=readmits;
-    document.getElementById('ra-rate').textContent=rate+'%';
-    const rc=document.getElementById('ra-rate')?.closest('.kpi-card');
-    if (rc) rc.className='kpi-card '+(rate>5?'red':'green');
+    const total = visits.length, readmits = visits.filter(v => v.status === 'readmit').length;
+    const rate = total > 0 ? ((readmits / total) * 100).toFixed(1) : 0;
+    document.getElementById('ra-totalVisits').textContent = total;
+    document.getElementById('ra-readmitCount').textContent = readmits;
+    document.getElementById('ra-rate').textContent = rate + '%';
+    const rc = document.getElementById('ra-rate')?.closest('.kpi-card');
+    if (rc) rc.className = 'kpi-card ' + (rate > 5 ? 'red' : 'green');
 }
-
 function renderRaTable(visits) {
-    const tbody=document.getElementById('ra-tableBody');
+    const tbody = document.getElementById('ra-tableBody');
     if (!tbody) return;
-    if (!visits.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🏥</div>Belum ada data kunjungan. Tambahkan melalui form di atas.</div></td></tr>`;return;}
-    const sm={readmit:{label:'Readmission',cls:'badge-readmit'},new:{label:'Pasien Baru',cls:'badge-new'},followup:{label:'Kontrol',cls:'badge-followup'}};
-    tbody.innerHTML=[...visits].reverse().map((v,ri)=>{
-        const idx=visits.length-1-ri,s=sm[v.status];
-        const d=new Date(v.visitDate).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
-        return `<tr><td><code style="font-size:12px">${v.patientId}</code></td><td>${v.patientName}</td><td>${d}</td><td>${v.poli}</td><td>${v.diagnosis||'\u2014'}</td><td><span class="td-pill ${s.cls}">${s.label}</span></td><td><button class="btn btn-danger" onclick="deleteVisit(${idx})">Hapus</button></td></tr>`;
+    if (!visits.length) {
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">hospital</div>Belum ada data kunjungan. Tambahkan melalui section Input Data.</div></td></tr>';
+        return;
+    }
+    const sm = { readmit:{label:'Readmission',cls:'badge-readmit'}, new:{label:'Pasien Baru',cls:'badge-new'}, followup:{label:'Kontrol',cls:'badge-followup'} };
+    tbody.innerHTML = [...visits].reverse().map(v => {
+        const s = sm[v.status];
+        const d = new Date(v.visitDate).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+        return `<tr><td><code style="font-size:12px">${v.patientId}</code></td><td>${v.patientName}</td><td>${d}</td><td>${v.poli}</td><td>${v.diagnosis||'-'}</td><td><span class="td-pill ${s.cls}">${s.label}</span></td></tr>`;
     }).join('');
 }
-
 function renderRaChart(visits) {
-    const counts={};
-    visits.filter(v=>v.status==='readmit').forEach(v=>{const key=v.visitDate.slice(0,7);counts[key]=(counts[key]||0)+1;});
-    const months=[],now=new Date();
-    for (let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(d.toISOString().slice(0,7));}
-    const labels=months.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleDateString('id-ID',{month:'short',year:'2-digit'});});
-    const data=months.map(m=>counts[m]||0);
+    const counts = {};
+    visits.filter(v => v.status === 'readmit').forEach(v => { const key = v.visitDate.slice(0,7); counts[key] = (counts[key]||0)+1; });
+    const months = [], now = new Date();
+    for (let i=5;i>=0;i--) { const d=new Date(now.getFullYear(),now.getMonth()-i,1); months.push(d.toISOString().slice(0,7)); }
+    const labels = months.map(m => { const [y,mo]=m.split('-'); return new Date(y,mo-1).toLocaleDateString('id-ID',{month:'short',year:'2-digit'}); });
+    const data = months.map(m => counts[m]||0);
     makeOrUpdate('ra-trendChart',{type:'bar',data:{labels,datasets:[{label:'Readmission',data,backgroundColor:data.map(v=>v===0?'#E8E6E0':'#F76B4F'),borderRadius:6}]},options:{...baseOpts(),scales:{y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'#F0EDE8'}},x:{grid:{display:false}}}}});
 }
-
 function renderReadmissionPage() {
-    const visits=raLoad();
+    const visits = recalcStatus(getVisitsFromInput());
     renderKPI(visits);
     renderRaTable(visits);
     renderRaChart(visits);
 }
 
-function addVisit() {
-    const patientId=document.getElementById('ra-patientId')?.value.trim();
-    const patientName=document.getElementById('ra-patientName')?.value.trim();
-    const visitDate=document.getElementById('ra-visitDate')?.value;
-    const poli=document.getElementById('ra-poli')?.value;
-    const diagnosis=document.getElementById('ra-diagnosis')?.value.trim();
-    if (!patientId||!patientName||!visitDate||!poli){showToast('⚠️ Lengkapi semua field wajib terlebih dahulu.');return;}
-    let visits=raLoad();
-    visits.push({patientId,patientName,visitDate,poli,diagnosis,status:'new'});
-    visits=recalcStatus(visits);
-    raSave(visits);
-    ['ra-patientId','ra-patientName','ra-poli','ra-diagnosis'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    const rd=document.getElementById('ra-visitDate');if(rd)rd.valueAsDate=new Date();
-    showToast(visits[visits.length-1].status==='readmit'?'🔴 Kunjungan ditambahkan — terdeteksi READMISSION dalam 30 hari!':'✅ Kunjungan berhasil ditambahkan.');
-    renderReadmissionPage();
-}
-
-function deleteVisit(index) {
-    let visits=raLoad();visits.splice(index,1);visits=recalcStatus(visits);raSave(visits);renderReadmissionPage();showToast('🗑️ Data kunjungan dihapus.');
-}
-
-function clearAllVisits() {
-    if (!confirm('Hapus semua data kunjungan? Tindakan ini tidak bisa dibatalkan.')) return;
-    raSave([]);renderReadmissionPage();showToast('🗑️ Semua data berhasil dihapus.');
-}
-
-// ══════════════════════════════════════════════════════════════
 // INPUT FORM LOGIC
 // ══════════════════════════════════════════════════════════════
 let editingIndex=null;
@@ -553,7 +596,7 @@ function renderHistory() {
 
 function editEntry(idx){
     const d=getData()[idx];if(!d)return;editingIndex=idx;
-    ['patientName','patientId','ward','admissionDate','dischargeDate','lengthOfStay','serviceType','visitDate','registrationTime','callTime','waitTime','satisfactionScore','financeDate','financeType','financeUnit','financeAmount','financeNote'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=d[id]||'';});
+    ['patientName','patientId','ward','admissionDate','dischargeDate','lengthOfStay','serviceType','visitDate','registrationTime','callTime','waitTime','satisfactionScore','financeDate','financeType','financeUnit','financeAmount','financeNote','doctorName','doctorPoli'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=d[id]||'';});
     const fv=document.getElementById('isFirstVisit');if(fv)fv.checked=!!d.isFirstVisit;
     document.getElementById('editBanner')?.classList.add('show');
     document.getElementById('saveIndicator')?.classList.remove('show');
@@ -582,7 +625,8 @@ async function handleSubmit(e){
   e.preventDefault();
   const fields = ['patientName','patientId','ward','admissionDate','dischargeDate','lengthOfStay',
                   'serviceType','visitDate','registrationTime','callTime','waitTime','satisfactionScore',
-                  'financeDate','financeType','financeUnit','financeAmount','financeNote'];
+                  'financeDate','financeType','financeUnit','financeAmount','financeNote',
+                  'doctorName','doctorPoli'];
   const data = Object.fromEntries(fields.map(id => {
     const el = document.getElementById(id);
     return [id, el ? (el.value.trim ? el.value.trim() : el.value) : ''];
@@ -667,98 +711,86 @@ function refreshAllPages(){
 // });
 
 // ══════════════════════════════════════════════════════════════
-// AUTH
-// ══════════════════════════════════════════════════════════════
-let isAdmin = false;
-
-function setAdminUI(admin) {
-  isAdmin = admin;
-
-  if (admin) {
-    document.querySelector('.main').classList.add('visible');
-  } else {
-    document.querySelector('.main').classList.remove('visible');
-  }
-
-//   document.querySelectorAll('.nav-item.admin-only').forEach(btn => {
-//     btn.style.display = admin ? '' : 'none';
-//   });
-
-  document.querySelectorAll('.nav-item.admin-only').forEach(btn => {
-    if (admin) {
-      btn.classList.add('admin-visible');
-      btn.style.display = '';        // clear any leftover inline style
-    } else {
-      btn.classList.remove('admin-visible');
-      btn.style.display = 'none';
-    }
-  });
-
-  document.getElementById('loginBtn').style.display = admin ? 'none' : '';
-  document.getElementById('logoutBtn').style.display = admin ? '' : 'none';
-
-  if (!admin) {
-    const restrictedPages = ['page-service','page-finance','page-hr','page-readmission','page-efficiency','page-input'];
-    const onRestricted = restrictedPages.some(id => {
-      const el = document.getElementById(id);
-      return el && el.classList.contains('active');
-    });
-    if (onRestricted) {
-      showPage('home', document.querySelector('.nav-item.admin-only'));
-    }
-  }
+// ============================================================
+// SIDEBAR TOGGLE
+// ============================================================
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const main    = document.querySelector('.main');
+    const isCollapsed = sidebar.classList.toggle('collapsed');
+    main.classList.toggle('sidebar-collapsed', isCollapsed);
+    localStorage.setItem('sidebarCollapsed', isCollapsed);
 }
 
-function showLoginOverlay() {
-  document.getElementById('loginOverlay').style.display = 'flex';
+function initSidebar() {
+    const collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    if (collapsed) {
+        document.getElementById('sidebar')?.classList.add('collapsed');
+        document.querySelector('.main')?.classList.add('sidebar-collapsed');
+    }
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+let isAdmin = false;
+
+function showDashboard() {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('dashboardApp').style.display = 'flex';
+    const homeBtn = document.querySelector('#dashboardApp .nav-item');
+    if (homeBtn) showPage('home', homeBtn);
+}
+
+function showLoginPage() {
+    document.getElementById('dashboardApp').style.display = 'none';
+    document.getElementById('loginPage').style.display = 'flex';
 }
 
 async function submitLogin() {
-  const username = document.getElementById('loginUsername').value;
-  const password = document.getElementById('loginPassword').value;
-  const errEl = document.getElementById('loginError');
-  try {
-    const res = await fetch('http://localhost:3000/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ username, password })
-    });
-    if (res.ok) {
-      document.getElementById('loginOverlay').style.display = 'none';
-      errEl.style.display = 'none';
-      setAdminUI(true);
-    } else {
-      errEl.style.display = 'block';
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+    const errEl = document.getElementById('loginError');
+    try {
+        const res = await fetch('http://localhost:3000/login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', body: JSON.stringify({ username, password })
+        });
+        if (res.ok) {
+            errEl.style.display = 'none';
+            isAdmin = true;
+            showDashboard();
+        } else {
+            errEl.style.display = 'block';
+        }
+    } catch (err) {
+        errEl.textContent = 'Tidak dapat terhubung ke server.';
+        errEl.style.display = 'block';
     }
-  } catch (err) {
-    errEl.textContent = 'Tidak dapat terhubung ke server.';
-    errEl.style.display = 'block';
-  }
 }
 
 async function doLogout() {
-  await fetch('http://localhost:3000/logout', { method: 'POST', credentials: 'include' });
-  setAdminUI(false);
+    await fetch('http://localhost:3000/logout', { method: 'POST', credentials: 'include' });
+    isAdmin = false;
+    showLoginPage();
 }
 
-// Check session on page load
 async function checkSession() {
-  try {
-    const res = await fetch('http://localhost:3000/me', { credentials: 'include' });
-    const data = await res.json();
-    setAdminUI(data.isAdmin);
-  } catch {
-    setAdminUI(false);
-  }
+    try {
+        const res = await fetch('http://localhost:3000/me', { credentials: 'include' });
+        const data = await res.json();
+        if (data.isAdmin) { isAdmin = true; showDashboard(); }
+        else { showLoginPage(); }
+    } catch {
+        showLoginPage();
+    }
 }
 
-// ── INIT ──────────────────────────────────────────────────────
+// -- INIT --
+initSidebar();
 renderHomePage();
 renderServicePage();
 renderFinancePage();
 renderEfficiencyPage();
 renderHistory();
-syncFromMongoDB();
-setInterval(syncFromMongoDB, 30000);
-checkSession();   // ← check if already logged in on page load
+checkSession();
