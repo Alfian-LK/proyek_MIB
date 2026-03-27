@@ -14,7 +14,10 @@ const uri = "mongodb+srv://alfiankalani_db_user:manajemeninfobio@mib-uts.e3tztgr
 const client = new MongoClient(uri);
 
 // Middleware to parse JSON and serve HTML files
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+app.use(cors({
+  origin: 'https://catsushiroll.github.io',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static("public"));
 app.use(session({
