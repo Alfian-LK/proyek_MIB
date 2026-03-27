@@ -6,6 +6,8 @@ const MongoClient = mongodb.MongoClient;
 const ObjectId = mongodb.ObjectId;
 const cors = require("cors");
 const session = require("express-session");
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 const app = express();
 const uri = "mongodb+srv://alfiankalani_db_user:manajemeninfobio@mib-uts.e3tztgr.mongodb.net/?appName=mib-uts";
