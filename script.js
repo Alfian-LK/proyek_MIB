@@ -614,7 +614,7 @@ async function deleteEntry(idx){
     // Delete from MongoDB if record has a MongoDB _id
     if(mongoId){
         try{
-            await fetch(`http://localhost:3000/delete/${mongoId}`,{method:'DELETE'});
+            await fetch(`http://proyekmib-production.up.railway.app/delete/${mongoId}`,{method:'DELETE'});
             console.log('MongoDB delete success');
         }catch(err){
             console.warn('MongoDB delete failed (local delete still applied):',err.message);
@@ -657,7 +657,7 @@ async function handleSubmit(e){
   try {
     if (existingMongoId) {
       // UPDATE existing record in MongoDB
-      const res = await fetch(`http://localhost:3000/update/${existingMongoId}`, {
+      const res = await fetch(`http://proyekmib-production.up.railway.app/update/${existingMongoId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -667,7 +667,7 @@ async function handleSubmit(e){
       console.log('MongoDB update success:', existingMongoId);
     } else {
     // INSERT new record in MongoDB
-    const res = await fetch('http://localhost:3000/insert', {
+    const res = await fetch('http://proyekmib-production.up.railway.app/insert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -785,7 +785,7 @@ async function submitLogin() {
     const password = document.getElementById('loginPassword').value;
     const errEl = document.getElementById('loginError');
     try {
-        const res = await fetch('http://localhost:3000/login', {
+        const res = await fetch('http://proyekmib-production.up.railway.app/login', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             credentials: 'include', body: JSON.stringify({ username, password })
         });
@@ -803,14 +803,14 @@ async function submitLogin() {
 }
 
 async function doLogout() {
-    await fetch('http://localhost:3000/logout', { method: 'POST', credentials: 'include' });
+    await fetch('http://proyekmib-production.up.railway.app/logout', { method: 'POST', credentials: 'include' });
     isAdmin = false;
     showLoginPage();
 }
 
 async function checkSession() {
     try {
-        const res = await fetch('http://localhost:3000/me', { credentials: 'include' });
+        const res = await fetch('http://proyekmib-production.up.railway.app/me', { credentials: 'include' });
         const data = await res.json();
         if (data.isAdmin) { isAdmin = true; showDashboard(); }
         else { showLoginPage(); }
